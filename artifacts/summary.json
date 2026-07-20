@@ -1,0 +1,19 @@
+{
+  "applications": 50000,
+  "events": 149108,
+  "funded_7d_pct": 15.19,
+  "manual_review_pct": 4.26,
+  "support_contact_pct": 7.23,
+  "largest_absolute_drop_before_stage": "Document submitted",
+  "largest_absolute_drop_applications": 13847,
+  "recommended_intervention": "Document-readiness checklist",
+  "recommended_decision_score": 77.7,
+  "experiment_primary_metric": "Document submission",
+  "experiment_secondary_metric": "Funded within 7 days",
+  "experiment_primary_base_rate_pct": 57.1,
+  "experiment_sample_per_arm": 6103,
+  "experiment_total_sample": 12206,
+  "experiment_days_full_traffic": 37,
+  "minimum_detectable_lift_pp": 2.5,
+  "data_status": "Fully synthetic; no customer or company data"
+}

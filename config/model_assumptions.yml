@@ -1,0 +1,84 @@
+project:
+  name: France Fintech Friction Lab
+  geography: France
+  generated_applications: 50000
+  seed: 202707
+
+unit_economics:
+  # Illustrative inputs for comparing interventions, not company economics.
+  funded_account_12m_contribution_eur: 45.0
+  support_contact_cost_eur: 5.5
+  manual_review_cost_eur: 8.5
+  monthly_applications: 10000
+
+interventions:
+  # cost_population defines who incurs the per-application variable cost:
+  # application_started (everyone), profile_completed (reaches the document step),
+  # failed_verification (submitted documents but did not pass verification).
+  - key: readiness_checklist
+    name: Document-readiness checklist
+    hypothesis: Showing accepted documents and capture tips before KYC reduces avoidable submission friction.
+    target_stage: document_submitted
+    stage_lift_pp:
+      low: 2.0
+      most_likely: 4.0
+      high: 6.0
+    support_delta_pp: -0.8
+    manual_review_delta_pp: -0.2
+    fixed_cost_eur: 45000
+    variable_cost_eur_per_application: 0.04
+    cost_population: profile_completed
+    delivery_weeks: 5
+    evidence_confidence: 0.62
+
+  - key: contextual_explainer
+    name: Contextual data-use explainer
+    hypothesis: Explaining why each required field is needed increases trust and completion.
+    target_stage: profile_completed
+    stage_lift_pp:
+      low: 1.0
+      most_likely: 2.5
+      high: 4.0
+    support_delta_pp: -0.4
+    manual_review_delta_pp: 0.0
+    fixed_cost_eur: 28000
+    variable_cost_eur_per_application: 0.01
+    cost_population: application_started
+    delivery_weeks: 4
+    evidence_confidence: 0.55
+
+  - key: assisted_recovery
+    name: Assisted recovery for failed submissions
+    hypothesis: Timely guidance after a failed document attempt recovers high-intent applicants.
+    target_stage: verification_completed
+    stage_lift_pp:
+      low: 2.0
+      most_likely: 5.0
+      high: 8.0
+    support_delta_pp: 1.5
+    manual_review_delta_pp: 1.0
+    fixed_cost_eur: 72000
+    variable_cost_eur_per_application: 0.35
+    cost_population: failed_verification
+    delivery_weeks: 8
+    evidence_confidence: 0.48
+
+decision_weights:
+  conversion_impact: 0.40
+  guardrails: 0.25
+  speed_to_learn: 0.20
+  evidence_confidence: 0.15
+
+experiment:
+  # The experiment is sized on the stage the checklist directly targets: document
+  # submission. The modelled most-likely lift there is 4 pp conditional (~3.4 pp per
+  # started application), so an MDE of 2.5 pp is detectable within the test window.
+  # Funded within 7 days stays a secondary metric: its modelled lift (~0.9 pp) would
+  # need several months of full traffic to power, so it is read directionally.
+  alpha: 0.05
+  power: 0.80
+  primary_metric: document_submitted
+  primary_metric_label: Document submission
+  secondary_metric_label: Funded within 7 days
+  minimum_detectable_lift_pp: 2.5
+

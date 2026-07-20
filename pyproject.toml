@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "france-fintech-friction-lab"
+version = "0.1.0"
+description = "A transparent Strategy & Operations case on remote fintech onboarding in France."
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+license = { text = "MIT" }
+authors = [{ name = "Whitney Ankrah" }]
+dependencies = [
+  "duckdb>=1.2,<2",
+  "numpy>=2.1,<3",
+  "pandas>=2.2,<3",
+  "plotly>=6,<7",
+  "pyarrow>=18,<22",
+  "pyyaml>=6,<7",
+  "streamlit>=1.50,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3,<9",
+  "ruff>=0.9,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/friction_lab"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

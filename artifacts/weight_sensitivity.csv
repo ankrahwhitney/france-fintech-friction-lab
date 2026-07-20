@@ -1,0 +1,16 @@
+weight_profile,intervention,decision_score,winner
+Balanced,Document-readiness checklist,77.7,True
+Balanced,Contextual data-use explainer,67.3,False
+Balanced,Assisted recovery for failed submissions,47.2,False
+Growth first,Document-readiness checklist,74.9,True
+Growth first,Contextual data-use explainer,53.4,False
+Growth first,Assisted recovery for failed submissions,69.8,False
+Operations first,Document-readiness checklist,84.6,True
+Operations first,Contextual data-use explainer,77.0,False
+Operations first,Assisted recovery for failed submissions,32.2,False
+Speed first,Document-readiness checklist,77.7,False
+Speed first,Contextual data-use explainer,79.3,True
+Speed first,Assisted recovery for failed submissions,29.8,False
+Evidence first,Document-readiness checklist,73.2,True
+Evidence first,Contextual data-use explainer,63.5,False
+Evidence first,Assisted recovery for failed submissions,46.6,False

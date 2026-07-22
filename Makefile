@@ -1,6 +1,11 @@
 PYTHON ?= python3.12
 UV ?= uv
 
+# Make the src-layout explicit for every repository command. This keeps fresh
+# clones reproducible across Python distributions, including environments that
+# ignore underscore-prefixed editable-install .pth files.
+export PYTHONPATH := $(CURDIR)/src$(if $(PYTHONPATH),:$(PYTHONPATH))
+
 .PHONY: check-python setup data analysis all ci test lint format-check audit dashboard clean
 
 check-python:

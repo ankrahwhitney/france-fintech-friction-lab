@@ -130,5 +130,5 @@ Python · pandas · NumPy · DuckDB · SQL · Parquet · Plotly · Streamlit · 
 ## Candidate
 
 **Whitney Ankrah** — B.Sc. Business Information Systems candidate with experience in banking IT
-project management, process analysis, Python automation, entrepreneurship and an upcoming HR
-Digitalisation & Analytics internship at Porsche AG.
+project management, process analysis, Python automation, entrepreneurship and an upcoming
+AI-enabled HR process optimisation internship at Porsche AG.

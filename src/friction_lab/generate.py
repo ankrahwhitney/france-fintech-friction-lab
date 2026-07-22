@@ -148,7 +148,7 @@ def generate_datasets(output_dir: Path = DATA_DIR) -> GeneratedPaths:
         document_submitted_at, verification_minutes, verification_failed
     )
     first_funded_at = timestamp_after(verification_completed_at, funding_minutes, funded)
-    funded_7d = funded & (first_funded_at <= started_at + pd.Timedelta(days=7))
+    funded_7d = funded & (first_funded_at <= started_at + np.timedelta64(7, "D"))
     support_contacted_at = timestamp_after(started_at, rng.uniform(5, 240, n), support_contact)
 
     applications = pd.DataFrame(

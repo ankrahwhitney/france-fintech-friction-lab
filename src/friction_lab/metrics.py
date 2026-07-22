@@ -313,7 +313,7 @@ def build_analysis_artifacts(
                 applications["funded_7d"]
                 & (
                     applications["first_funded_at"]
-                    > applications["started_at"] + pd.Timedelta(days=7)
+                    > applications["started_at"] + np.timedelta64(7, "D")
                 )
             ).sum()
         ),

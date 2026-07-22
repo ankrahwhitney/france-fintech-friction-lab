@@ -29,8 +29,7 @@ def test_funnel_dependencies_are_monotonic() -> None:
 def test_funded_within_seven_days_is_computed_from_timestamps() -> None:
     applications = pd.read_parquet(DATA_DIR / "applications.parquet")
     expected = applications["funded"] & (
-        applications["first_funded_at"]
-        <= applications["started_at"] + np.timedelta64(7, "D")
+        applications["first_funded_at"] <= applications["started_at"] + np.timedelta64(7, "D")
     )
     pd.testing.assert_series_equal(applications["funded_7d"], expected, check_names=False)
     assert (applications.loc[applications["funded_7d"], "first_funded_at"].notna()).all()

@@ -216,9 +216,7 @@ if page == "Executive decision":
     top_intervention = scorecard.iloc[0]["intervention"]
     top_wins = int((winners["intervention"] == top_intervention).sum())
     other_winners = sorted(set(winners["intervention"]) - {top_intervention})
-    dissent = (
-        f" Other profiles select: {', '.join(other_winners)}." if other_winners else ""
-    )
+    dissent = f" Other profiles select: {', '.join(other_winners)}." if other_winners else ""
     st.caption(
         f"{top_intervention} wins {top_wins} of {len(winners)} plausible weighting profiles, "
         f"showing where the ranking depends on management priorities.{dissent}"
@@ -252,10 +250,11 @@ if page == "Executive decision":
 
     st.subheader("What would change the decision?")
     st.markdown(
-        "The recommendation should be revisited if the readiness checklist increases "
-        "manual reviews, "
-        "if the realised funded-account lift is below the pre-agreed minimum detectable effect, or "
-        "if compliance review identifies additional information requirements."
+        "The recommendation should be revisited if the primary document-submission 95% confidence "
+        "interval does not exclude zero in the positive direction, if its point estimate is below "
+        "the pre-agreed 1.5 pp practical threshold, if the funded-account secondary metric or "
+        "operational guardrails are materially adverse, or if compliance review identifies "
+        "additional information requirements."
     )
 
 elif page == "Funnel diagnosis":

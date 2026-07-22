@@ -23,10 +23,18 @@ def _query_sql(connection: duckdb.DuckDBPyConnection, name: str) -> pd.DataFrame
 
 
 def _experiment_sample_size(base_rate: float, lift_pp: float, alpha: float, power: float) -> int:
+    if not 0 < base_rate < 1:
+        raise ValueError(f"base rate must be in (0, 1), got {base_rate}")
     if lift_pp <= 0:
         raise ValueError(f"minimum detectable lift must be positive, got {lift_pp}")
+    if not 0 < alpha < 1:
+        raise ValueError(f"alpha must be in (0, 1), got {alpha}")
+    if not 0 < power < 1:
+        raise ValueError(f"power must be in (0, 1), got {power}")
     p1 = base_rate
-    p2 = min(0.999, base_rate + lift_pp / 100)
+    p2 = base_rate + lift_pp / 100
+    if p2 >= 1:
+        raise ValueError(f"base rate plus minimum detectable lift must be below 1, got {p2}")
     p_bar = (p1 + p2) / 2
     z_alpha = NormalDist().inv_cdf(1 - alpha / 2)
     z_power = NormalDist().inv_cdf(power)
@@ -51,8 +59,7 @@ def _simulate_interventions(
     missing_stages = [stage for stage in expected_stages if stage not in counts]
     if missing_stages:
         raise KeyError(
-            f"Funnel is missing stages {missing_stages}; these labels must match "
-            "sql/01_funnel.sql."
+            f"Funnel is missing stages {missing_stages}; these labels must match sql/01_funnel.sql."
         )
     stage_rates = {
         "profile_completed": counts["Profile completed"] / counts["Application started"],
@@ -157,9 +164,7 @@ def _simulate_interventions(
     guardrail_penalty = scorecard["support_delta_pp"].clip(lower=0) + scorecard[
         "manual_review_delta_pp"
     ].clip(lower=0)
-    guardrail_score = (
-        1 - guardrail_penalty / anchors["guardrail_penalty_pp_cap"]
-    ).clip(0, 1)
+    guardrail_score = (1 - guardrail_penalty / anchors["guardrail_penalty_pp_cap"]).clip(0, 1)
     fastest = float(anchors["fastest_delivery_weeks"])
     slowest = float(anchors["slowest_delivery_weeks"])
     speed_score = (1 - (scorecard["delivery_weeks"] - fastest) / (slowest - fastest)).clip(0, 1)

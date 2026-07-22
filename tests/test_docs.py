@@ -42,3 +42,8 @@ def test_claims_register_contains_every_generated_artifact() -> None:
     }
     missing = sorted(name for name in public_artifacts if name not in claims)
     assert not missing, f"Generated artifacts missing from claims register: {missing}"
+
+
+def test_claims_register_records_public_source_verification_date() -> None:
+    claims = (ROOT / "docs" / "claims_register.md").read_text(encoding="utf-8")
+    assert re.search(r"Public sources last verified:\*\* \d{4}-\d{2}-\d{2}", claims)

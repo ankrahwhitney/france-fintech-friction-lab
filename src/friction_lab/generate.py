@@ -138,9 +138,7 @@ def generate_datasets(output_dir: Path = DATA_DIR) -> GeneratedPaths:
     document_submitted_at = timestamp_after(
         profile_completed_at, document_minutes, document_submitted
     )
-    manual_review_at = timestamp_after(
-        document_submitted_at, rng.uniform(2, 30, n), manual_review
-    )
+    manual_review_at = timestamp_after(document_submitted_at, rng.uniform(2, 30, n), manual_review)
     verification_completed_at = timestamp_after(
         document_submitted_at, verification_minutes, verified
     )

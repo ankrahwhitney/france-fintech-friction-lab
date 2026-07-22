@@ -5,6 +5,9 @@ verify it. Statuses: **generated** (deterministic pipeline output, reproduce wit
 **assumption** (authored input, editable in `config/model_assumptions.yml`), **public** (external
 source, cited), **design choice** (methodological decision, defended in `docs/methodology.md`).
 
+**Public sources last verified:** 2026-07-22. A scheduled GitHub Actions check re-tests every
+external link monthly; source meaning and applicability still require human review.
+
 | Claim | Status | Verify in |
 |---|---|---|
 | 50,000 applications, 162,892 events | generated | `artifacts/summary.json` |

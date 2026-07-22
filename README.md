@@ -39,9 +39,10 @@ indicators as guardrails. Powering the funded rate alone for the modelled ~0.9 p
 52,408 participants, or about 158 days at full traffic; the first test therefore reads the targeted
 stage first and keeps a longer holdout for downstream confirmation.
 
-**What would change the decision:** evidence that the checklist increases review queues, a realised
-lift below the pre-agreed threshold, customer research showing that the copy reduces trust, or a
-compliance requirement that changes the proposed sequence.
+**What would change the decision:** the primary document-submission 95% confidence interval does
+not exclude zero in the positive direction; its point estimate is below the pre-agreed 1.5 pp
+practical threshold; a funded-account, operational or compliance guardrail is materially adverse;
+or qualitative research shows that the copy reduces trust.
 
 ## Why this repository exists
 
@@ -85,13 +86,14 @@ The case demonstrates the work of Strategy & Operations rather than a decorative
 
 ## Reproduce the case
 
-Python 3.12 is recommended and recorded in `.python-version`. Python 3.14 is intentionally excluded
-until the analytics dependency stack supports it consistently.
+**Python 3.12 is required** and recorded in `.python-version`. The project intentionally has one
+runtime contract so local reproduction and CI use the same analytics stack.
 
 ```bash
-python -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
-python -m pip install -e ".[dev]"
+python -m pip install uv==0.11.16
+make setup
 make all
 make dashboard
 ```
@@ -101,6 +103,10 @@ simulates uncertainty around three interventions and writes recruiter-facing art
 
 Current generated baseline: 14.81% funded within seven days, 4.40% manual review and 7.23% support
 contact. Run the pipeline to verify every figure from source code.
+
+**Packaging contract:** this is an application repository, not a redistributable Python library.
+Config and SQL are versioned repository resources. Run it from the clone root using the locked,
+editable environment above; building and installing the wheel elsewhere is intentionally unsupported.
 
 ## Repository map
 

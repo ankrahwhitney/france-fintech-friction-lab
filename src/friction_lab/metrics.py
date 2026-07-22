@@ -13,11 +13,18 @@ from .config import ARTIFACT_DIR, DATA_DIR, ROOT, load_config
 
 
 def _query_sql(connection: duckdb.DuckDBPyConnection, name: str) -> pd.DataFrame:
-    query = (ROOT / "sql" / name).read_text(encoding="utf-8")
-    return connection.execute(query).fetch_df()
+    path = ROOT / "sql" / name
+    if not path.exists():
+        raise FileNotFoundError(
+            f"{path} not found. The analysis expects the full repository layout (sql/, config/) "
+            "and an editable install from the repository root: pip install -e ."
+        )
+    return connection.execute(path.read_text(encoding="utf-8")).fetch_df()
 
 
 def _experiment_sample_size(base_rate: float, lift_pp: float, alpha: float, power: float) -> int:
+    if lift_pp <= 0:
+        raise ValueError(f"minimum detectable lift must be positive, got {lift_pp}")
     p1 = base_rate
     p2 = min(0.999, base_rate + lift_pp / 100)
     p_bar = (p1 + p2) / 2
@@ -34,6 +41,19 @@ def _simulate_interventions(
     funnel: pd.DataFrame, applications: pd.DataFrame, config: dict[str, Any]
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     counts = dict(zip(funnel["stage"], funnel["applications"], strict=True))
+    expected_stages = [
+        "Application started",
+        "Profile completed",
+        "Document submitted",
+        "Verification completed",
+        "Funded within 7 days",
+    ]
+    missing_stages = [stage for stage in expected_stages if stage not in counts]
+    if missing_stages:
+        raise KeyError(
+            f"Funnel is missing stages {missing_stages}; these labels must match "
+            "sql/01_funnel.sql."
+        )
     stage_rates = {
         "profile_completed": counts["Profile completed"] / counts["Application started"],
         "document_submitted": counts["Document submitted"] / counts["Profile completed"],
@@ -129,16 +149,24 @@ def _simulate_interventions(
         )
 
     scorecard = pd.DataFrame(outputs)
+    anchors = config["decision_score_anchors"]
     impact = scorecard["expected_funded_lift_pp"]
-    impact_score = impact / impact.max()
+    # Absolute anchors make scores stable when the option set changes. Values beyond
+    # the cap saturate instead of giving every other candidate a different score.
+    impact_score = (impact / anchors["conversion_impact_pp_cap"]).clip(0, 1)
     guardrail_penalty = scorecard["support_delta_pp"].clip(lower=0) + scorecard[
         "manual_review_delta_pp"
     ].clip(lower=0)
-    guardrail_score = 1 - guardrail_penalty / max(1.0, guardrail_penalty.max())
-    week_span = scorecard["delivery_weeks"].max() - scorecard["delivery_weeks"].min()
-    speed_score = 1 - (scorecard["delivery_weeks"] - scorecard["delivery_weeks"].min()) / max(
-        week_span, 1
-    )
+    guardrail_score = (
+        1 - guardrail_penalty / anchors["guardrail_penalty_pp_cap"]
+    ).clip(0, 1)
+    fastest = float(anchors["fastest_delivery_weeks"])
+    slowest = float(anchors["slowest_delivery_weeks"])
+    speed_score = (1 - (scorecard["delivery_weeks"] - fastest) / (slowest - fastest)).clip(0, 1)
+    scorecard["impact_score"] = (100 * impact_score).round(1)
+    scorecard["guardrail_score"] = (100 * guardrail_score).round(1)
+    scorecard["speed_score"] = (100 * speed_score).round(1)
+    scorecard["confidence_score"] = (100 * scorecard["evidence_confidence"]).round(1)
     weights = config["decision_weights"]
     scorecard["decision_score"] = (
         100
@@ -194,14 +222,14 @@ def build_analysis_artifacts(
     applications = pd.read_parquet(data_dir / "applications.parquet")
     events = pd.read_parquet(data_dir / "events.parquet")
 
-    connection = duckdb.connect()
-    connection.register("applications", applications)
-    connection.register("events", events)
-    funnel = _query_sql(connection, "01_funnel.sql")
-    segments = _query_sql(connection, "02_segment_friction.sql")
-    weekly = _query_sql(connection, "03_weekly_kpis.sql")
-    durations = _query_sql(connection, "04_stage_durations.sql")
-    connection.close()
+    with duckdb.connect() as connection:
+        connection.register("applications", applications)
+        connection.register("events", events)
+        funnel = _query_sql(connection, "01_funnel.sql")
+        segments = _query_sql(connection, "02_segment_friction.sql")
+        weekly = _query_sql(connection, "03_weekly_kpis.sql")
+        durations = _query_sql(connection, "04_stage_durations.sql")
+        review_latency = _query_sql(connection, "05_review_latency.sql")
 
     funnel["drop_from_previous"] = funnel["applications"].shift(1) - funnel["applications"]
     funnel.loc[0, "drop_from_previous"] = 0
@@ -217,7 +245,21 @@ def build_analysis_artifacts(
         experiment["power"],
     )
     monthly_apps = int(config["unit_economics"]["monthly_applications"])
-    experiment_days_full_traffic = int(np.ceil(2 * sample_per_arm / (monthly_apps / 30)))
+    allocation = float(experiment["traffic_allocation"])
+    experiment_days_full_traffic = int(
+        np.ceil(2 * sample_per_arm / (monthly_apps * allocation / 30))
+    )
+
+    recommended_funded_lift = float(scorecard.iloc[0]["expected_funded_lift_pp"])
+    funded_sample_per_arm = _experiment_sample_size(
+        float(applications["funded_7d"].mean()),
+        recommended_funded_lift,
+        experiment["alpha"],
+        experiment["power"],
+    )
+    funded_experiment_days = int(
+        np.ceil(2 * funded_sample_per_arm / (monthly_apps * allocation / 30))
+    )
 
     top_friction = funnel.iloc[1:].sort_values("drop_from_previous", ascending=False).iloc[0]
     summary = {
@@ -236,8 +278,48 @@ def build_analysis_artifacts(
         "experiment_sample_per_arm": sample_per_arm,
         "experiment_total_sample": 2 * sample_per_arm,
         "experiment_days_full_traffic": experiment_days_full_traffic,
+        "funded_secondary_sample_per_arm": funded_sample_per_arm,
+        "funded_secondary_total_sample": 2 * funded_sample_per_arm,
+        "funded_secondary_days_full_traffic": funded_experiment_days,
         "minimum_detectable_lift_pp": experiment["minimum_detectable_lift_pp"],
+        "minimum_practical_lift_pp": experiment["minimum_practical_lift_pp"],
+        "traffic_allocation_pct": round(100 * allocation, 1),
+        "monthly_applications": monthly_apps,
         "data_status": "Fully synthetic; no customer or company data",
+    }
+
+    prohibited = {"name", "email", "phone", "address", "date_of_birth", "account_number"}
+    sorted_events = events.sort_values(["application_id", "event_at"]).reset_index(drop=True)
+    data_quality = {
+        "applications_rows": int(len(applications)),
+        "events_rows": int(len(events)),
+        "duplicate_application_ids": int(applications["application_id"].duplicated().sum()),
+        "events_with_unknown_application_id": int(
+            (~events["application_id"].isin(applications["application_id"])).sum()
+        ),
+        "events_with_missing_timestamp": int(events["event_at"].isna().sum()),
+        "event_stream_ordered": bool(events.reset_index(drop=True).equals(sorted_events)),
+        "profile_dependency_violations": int(
+            (applications["document_submitted"] & ~applications["profile_completed"]).sum()
+        ),
+        "verification_dependency_violations": int(
+            (applications["verified"] & ~applications["document_submitted"]).sum()
+        ),
+        "funding_dependency_violations": int(
+            (applications["funded"] & ~applications["verified"]).sum()
+        ),
+        "funded_7d_window_violations": int(
+            (
+                applications["funded_7d"]
+                & (
+                    applications["first_funded_at"]
+                    > applications["started_at"] + pd.Timedelta(days=7)
+                )
+            ).sum()
+        ),
+        "prohibited_pii_columns_present": sorted(
+            prohibited & {column.lower() for column in applications.columns}
+        ),
     }
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -245,10 +327,14 @@ def build_analysis_artifacts(
     segments.to_csv(output_dir / "segment_friction.csv", index=False)
     weekly.to_csv(output_dir / "weekly_kpis.csv", index=False)
     durations.to_csv(output_dir / "stage_durations.csv", index=False)
+    review_latency.to_csv(output_dir / "review_latency.csv", index=False)
     scorecard.to_csv(output_dir / "intervention_scorecard.csv", index=False)
     sensitivity.to_csv(output_dir / "weight_sensitivity.csv", index=False)
     distribution.to_parquet(output_dir / "intervention_simulations.parquet", index=False)
+    (output_dir / "data_quality.json").write_text(
+        json.dumps(data_quality, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     (output_dir / "summary.json").write_text(
-        json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8"
+        json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
     return summary

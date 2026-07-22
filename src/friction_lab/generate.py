@@ -24,8 +24,10 @@ def _event_rows(applications: pd.DataFrame) -> pd.DataFrame:
         ("application_started", "started_at", pd.Series(True, index=applications.index)),
         ("profile_completed", "profile_completed_at", applications["profile_completed"]),
         ("document_submitted", "document_submitted_at", applications["document_submitted"]),
+        ("manual_review_started", "manual_review_at", applications["manual_review"]),
         ("verification_completed", "verification_completed_at", applications["verified"]),
-        ("account_funded", "first_funded_at", applications["funded_7d"]),
+        ("verification_failed", "verification_failed_at", applications["verification_failed"]),
+        ("account_funded", "first_funded_at", applications["funded"]),
         ("support_contacted", "support_contacted_at", applications["support_contact"]),
     ]
     frames: list[pd.DataFrame] = []
@@ -79,21 +81,23 @@ def generate_datasets(output_dir: Path = DATA_DIR) -> GeneratedPaths:
     )
     document_submitted = profile_completed & (rng.random(n) < _sigmoid(document_score))
 
-    verification_score = (
-        0.35
-        + 0.28 * (document_type == "National ID")
-        - 0.62 * (document_type == "Residence permit")
-        - 0.30 * (network == "Unstable")
-        + rng.normal(0, 0.65, n)
-    )
-    verified = document_submitted & (rng.random(n) < _sigmoid(verification_score))
-
     manual_review_probability = np.clip(
         0.06 + 0.11 * (document_type == "Residence permit") + 0.05 * (network == "Unstable"),
         0,
         0.40,
     )
     manual_review = document_submitted & (rng.random(n) < manual_review_probability)
+
+    verification_score = (
+        0.35
+        + 0.28 * (document_type == "National ID")
+        - 0.62 * (document_type == "Residence permit")
+        - 0.30 * (network == "Unstable")
+        - 0.16 * manual_review
+        + rng.normal(0, 0.65, n)
+    )
+    verified = document_submitted & (rng.random(n) < _sigmoid(verification_score))
+    verification_failed = document_submitted & ~verified
 
     funding_score = (
         -0.28
@@ -103,7 +107,7 @@ def generate_datasets(output_dir: Path = DATA_DIR) -> GeneratedPaths:
         - 0.15 * manual_review
         + rng.normal(0, 0.60, n)
     )
-    funded_7d = verified & (rng.random(n) < _sigmoid(funding_score))
+    funded = verified & (rng.random(n) < _sigmoid(funding_score))
 
     support_probability = np.clip(
         0.035
@@ -118,9 +122,15 @@ def generate_datasets(output_dir: Path = DATA_DIR) -> GeneratedPaths:
     profile_minutes = np.maximum(1, rng.lognormal(1.55, 0.45, n))
     document_minutes = np.maximum(1, rng.lognormal(1.85, 0.60, n))
     verification_minutes = np.maximum(2, rng.lognormal(2.45, 0.70, n))
-    funding_minutes = np.maximum(5, rng.lognormal(4.30, 0.80, n))
+    # A review creates a real operational delay rather than only a classification flag.
+    review_delay_minutes = np.where(manual_review, rng.lognormal(5.90, 0.85, n), 0.0)
+    verification_minutes = verification_minutes + review_delay_minutes
+    # Funding can occur across several days, which makes the 7-day KPI a true event window.
+    funding_minutes = np.maximum(5, rng.lognormal(7.27, 0.95, n))
 
-    def timestamp_after(base: pd.Series, minutes: np.ndarray, mask: np.ndarray) -> pd.Series:
+    def timestamp_after(
+        base: pd.DatetimeIndex, minutes: np.ndarray, mask: np.ndarray
+    ) -> pd.DatetimeIndex:
         values = base + pd.to_timedelta(minutes, unit="m")
         return values.where(mask)
 
@@ -128,10 +138,17 @@ def generate_datasets(output_dir: Path = DATA_DIR) -> GeneratedPaths:
     document_submitted_at = timestamp_after(
         profile_completed_at, document_minutes, document_submitted
     )
+    manual_review_at = timestamp_after(
+        document_submitted_at, rng.uniform(2, 30, n), manual_review
+    )
     verification_completed_at = timestamp_after(
         document_submitted_at, verification_minutes, verified
     )
-    first_funded_at = timestamp_after(verification_completed_at, funding_minutes, funded_7d)
+    verification_failed_at = timestamp_after(
+        document_submitted_at, verification_minutes, verification_failed
+    )
+    first_funded_at = timestamp_after(verification_completed_at, funding_minutes, funded)
+    funded_7d = funded & (first_funded_at <= started_at + pd.Timedelta(days=7))
     support_contacted_at = timestamp_after(started_at, rng.uniform(5, 240, n), support_contact)
 
     applications = pd.DataFrame(
@@ -148,12 +165,16 @@ def generate_datasets(output_dir: Path = DATA_DIR) -> GeneratedPaths:
             "profile_completed": profile_completed,
             "document_submitted": document_submitted,
             "verified": verified,
+            "verification_failed": verification_failed,
             "manual_review": manual_review,
+            "funded": funded,
             "funded_7d": funded_7d,
             "support_contact": support_contact,
             "profile_completed_at": profile_completed_at,
             "document_submitted_at": document_submitted_at,
+            "manual_review_at": manual_review_at,
             "verification_completed_at": verification_completed_at,
+            "verification_failed_at": verification_failed_at,
             "first_funded_at": first_funded_at,
             "support_contacted_at": support_contacted_at,
         }

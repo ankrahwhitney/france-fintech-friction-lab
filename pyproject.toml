@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "A transparent Strategy & Operations case on remote fintech onboarding in France."
 readme = "README.md"
 requires-python = ">=3.12,<3.14"
-license = { text = "MIT" }
+license = "MIT"
 authors = [{ name = "Whitney Ankrah" }]
 dependencies = [
   "duckdb>=1.2,<2",
@@ -25,6 +25,9 @@ dev = [
   "pytest>=8.3,<9",
   "ruff>=0.9,<1",
 ]
+
+[project.urls]
+Repository = "https://github.com/ankrahwhitney/france-fintech-friction-lab"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/friction_lab"]

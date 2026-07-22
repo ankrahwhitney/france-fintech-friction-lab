@@ -2,5 +2,5 @@ stage_order,stage,applications,start_conversion_pct,previous_stage_conversion_pc
 1,Application started,50000,100.0,,0
 2,Profile completed,42398,84.8,84.8,7602
 3,Document submitted,28551,57.1,67.34,13847
-4,Verification completed,16949,33.9,59.36,11602
-5,Funded within 7 days,7597,15.19,44.82,9352
+4,Verification completed,16891,33.78,59.16,11660
+5,Funded within 7 days,7407,14.81,43.85,9484

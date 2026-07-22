@@ -1,0 +1,13 @@
+{
+  "applications_rows": 50000,
+  "events_rows": 162892,
+  "duplicate_application_ids": 0,
+  "events_with_unknown_application_id": 0,
+  "events_with_missing_timestamp": 0,
+  "event_stream_ordered": true,
+  "profile_dependency_violations": 0,
+  "verification_dependency_violations": 0,
+  "funding_dependency_violations": 0,
+  "funded_7d_window_violations": 0,
+  "prohibited_pii_columns_present": []
+}

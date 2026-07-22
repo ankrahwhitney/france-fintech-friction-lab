@@ -69,6 +69,14 @@ decision_weights:
   speed_to_learn: 0.20
   evidence_confidence: 0.15
 
+# Fixed scoring anchors keep scores comparable when another intervention is added.
+# Values at or beyond a cap receive 1 (positive criteria) or 0 (risk criterion).
+decision_score_anchors:
+  conversion_impact_pp_cap: 1.5
+  guardrail_penalty_pp_cap: 2.5
+  fastest_delivery_weeks: 4
+  slowest_delivery_weeks: 8
+
 experiment:
   # The experiment is sized on the stage the checklist directly targets: document
   # submission. The modelled most-likely lift there is 4 pp conditional (~3.4 pp per
@@ -81,4 +89,5 @@ experiment:
   primary_metric_label: Document submission
   secondary_metric_label: Funded within 7 days
   minimum_detectable_lift_pp: 2.5
-
+  minimum_practical_lift_pp: 1.5
+  traffic_allocation: 1.0

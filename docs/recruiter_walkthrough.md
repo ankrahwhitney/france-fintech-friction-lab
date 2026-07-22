@@ -16,7 +16,7 @@ verification stages. That's where an intervention should aim first."
 **1:00 — The options and the decision (50s).**
 "Three candidates: a document-readiness checklist, a data-use explainer, and assisted recovery
 after failed submissions. Scored on conversion impact, guardrails, speed to learn and evidence
-confidence, the checklist wins at 77.7 — not because it has the biggest modelled impact (assisted
+confidence, the checklist wins at 72.8 — not because it has the biggest modelled impact (assisted
 recovery does) but because it's the only one that improves the guardrails while moving the worst
 stage. And the ranking is stress-tested: under five different management priorities the checklist
 wins four; a speed-first leadership would pick the explainer instead. The model tells you where
@@ -27,7 +27,8 @@ the decision depends on priorities instead of hiding it."
 step, primary metric document submission — the one stage it targets and the only metric powerable
 in a quarter — 12,206 applicants, about 37 days of enrolment. Funded-in-seven-days reads
 directionally; verification pass rate, manual review and support contact are guardrails with
-pre-agreed kill-switches. Ship only if the interval clears the threshold and no guardrail breaks."
+pre-agreed kill-switches. Advance only if the primary effect is positive, practically meaningful
+and no guardrail breaks; keep the downstream funding outcome on a longer holdout."
 
 **2:30 — Why this is the job (30s).**
 "Strategy & Operations is deciding under uncertainty with explicit assumptions and reversible

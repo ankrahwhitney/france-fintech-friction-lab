@@ -1,6 +1,7 @@
-"""France Fintech Friction Lab."""
+"""France Fintech Friction Lab.
 
-from .generate import generate_datasets
-from .metrics import build_analysis_artifacts
+Public functions live in their focused modules. Keeping package import lightweight avoids
+loading the complete analytics stack when only configuration metadata is needed.
+"""
 
-__all__ = ["build_analysis_artifacts", "generate_datasets"]
+__all__: list[str] = []

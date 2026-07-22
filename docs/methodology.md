@@ -12,62 +12,71 @@ number is reproducible to the digit with `make all` and none of them describe a 
 50,000 applications are drawn with device, channel, locale, document type and network quality as
 covariates. Stage completion (profile → documents → verification → funding) is sampled from
 logistic scores whose coefficients encode the intended friction story: residence permits and
-unstable networks hurt document and verification stages; referrals help funding. Timestamps are
-lognormal minute-scale gaps between stages; an event stream is derived from the application
-table and analysed in `sql/04_stage_durations.sql`.
+unstable networks hurt document and verification stages; referrals help funding. A manual review
+creates a real verification delay, funding can occur across multiple days, and `funded_7d` is
+computed from the first-funding timestamp relative to application start. The derived event stream
+is analysed in `sql/04_stage_durations.sql` and `sql/05_review_latency.sql`.
 
 ## Known simplifications — read before the interview
 
-1. **"Funded within 7 days" is a label, not a windowed computation.** The generator draws
-   funding as a Bernoulli conditional on verification, with minute-scale timestamps; there is no
-   applicant who funds on day 6. In a real analysis this metric would be computed as an explicit
-   window over event timestamps. The label is kept because it is the operational metric a real
-   test would use.
-2. **Manual review neither gates nor delays verification.** In reality manual review sits inside
-   the verification stage and stretches its duration. Here it only affects funding propensity
-   and support contact. The stage-duration table therefore understates verification tails.
-3. **Segment differences are circular.** The residence-permit and unstable-network gaps replay
+1. **Segment differences are circular.** The residence-permit and unstable-network gaps replay
    the generator's own coefficients. They demonstrate the diagnostic *method*, not a discovery.
    The France-specific research that would replace them with evidence is specified in
    `docs/french_research_protocol.md`.
+2. **Manual review is a latency model, not a queue simulation.** It delays verification and is
+   analysed separately from straight-through processing, but the generator has no staffing,
+   arrival-rate, backlog or service-level mechanics. Real operational sizing needs queue data.
+3. **Funding timing is synthetic.** The seven-day label is a true timestamp window and is tested
+   as such, but the lognormal timing distribution is authored rather than market evidence.
 4. **The weekly view is stationary.** There is no seasonality or drift in the generator; weekly
    movement is sampling noise. The chart exists to show the monitoring layout.
 5. **Intervention lifts are triangular assumptions**, applied to one conditional stage rate with
    all other rates held fixed. This ignores selection effects: marginal applicants recovered at
    one stage likely convert below average downstream, so modelled funded-rate lifts are
    optimistic upper bounds. This is another reason the recommendation is "test", not "roll out".
+6. **Evidence-confidence values are judgement inputs.** They are not calibrated probabilities.
+   Their purpose is to make the ranking's dependence on evidence quality visible; the research
+   protocol defines how each value would be updated.
 
 ## Scoring-model choices and their defences
 
 - **Net value is excluded from the decision score.** The score answers "what should we *test*
   first" — impact potential, guardrail risk, speed to learn, confidence. Financial value gates
   the *rollout* decision after the test, using measured lift instead of assumed lift. Both value
-  columns are still published in the scorecard so the near-break-even economics of the checklist
-  (+€7,163 mean, −€6,338 P10) are visible, not hidden.
-- **Impact is normalised by the best option** (`impact / impact.max()`), so scores are relative
-  to the option set: adding a fourth intervention can change the others' scores. Acceptable for
-  ranking three options; would need a fixed scale for a living portfolio.
+  columns remain visible, including the checklist's near-break-even economics (+€5,940 mean,
+  −€7,224 P10).
+- **Scores use fixed anchors.** Impact saturates at 1.5 pp funded lift, guardrail score falls to
+  zero at 2.5 pp combined added load, and delivery speed is anchored from four to eight weeks.
+  The anchors are authored inputs, but unlike relative min/max scaling, adding a fourth option
+  does not silently change every existing score.
 - **Guardrail improvements earn no credit** — negative deltas are clipped to zero, so the score
   only punishes added risk. Conservative by design: assumed guardrail benefits are the least
   trustworthy input in the model.
 - **Costs are charged to the population that incurs them** (`cost_population` in the config):
   the checklist to everyone reaching the document step (84.8%), the explainer to all starters,
-  assisted recovery only to failed verifications (23.2%).
+  assisted recovery only to failed verifications (23.3%).
 
 ## Experiment sizing
 
 Two-proportion z-test sample size (pooled/unpooled hybrid formula in
-`src/friction_lab/metrics.py`), α = 0.05 two-sided, power = 0.80. Sized on the **document
-submission** rate (baseline 57.1%, MDE 2.5 pp → 6,103 per arm) because that is the stage the
-checklist targets and the only metric powerable inside one quarter: the modelled funded-rate
-lift (~0.9 pp) would need roughly five months of full traffic. Funded-in-7-days is therefore a
-directional secondary metric, and the decision rule requires it not to move against the primary.
+`src/friction_lab/metrics.py`), α = 0.05 two-sided, power = 0.80. The test is sized on the
+**document-submission** rate (baseline 57.1%, MDE 2.5 pp → 6,103 per arm) because that is the
+stage the checklist directly targets and the only metric powerable inside one quarter. The
+modelled funded-rate lift (0.88 pp) needs 26,204 per arm, or about 158 days at the authored
+traffic volume. Funded-in-seven-days is therefore directional in the first decision window and
+should remain on a longer holdout.
+
+The decision contract requires a statistically positive primary effect, a point estimate of at
+least 1.5 pp, no material adverse downstream direction and no guardrail breach. Full rules are in
+`docs/experiment_preregistration.md`.
 
 ## Reproducibility contract
 
 - `make all` regenerates data, artifacts and runs the tests; outputs are deterministic under the
   committed seed. CI additionally fails if committed artifacts drift from regenerated ones.
+- Tests always regenerate outputs, so stale, truncated or cloud-placeholder files cannot satisfy
+  the suite merely because a path exists.
 - Tests pin the published recommendation on purpose: a config change that flips the ranking
   breaks CI until the narrative documents are updated with it.
-- No personal data exists anywhere in the pipeline; the data contract test rejects PII-shaped
-  columns.
+- No personal data exists anywhere in the pipeline; the data contract rejects PII-shaped columns
+  and `artifacts/data_quality.json` makes the checks visible.

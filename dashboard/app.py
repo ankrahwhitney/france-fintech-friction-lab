@@ -50,7 +50,14 @@ st.markdown(
 
 @st.cache_data
 def load_artifacts() -> tuple[
-    dict, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame
+    dict,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
 ]:
     required = [
         ARTIFACTS / "summary.json",
@@ -58,15 +65,30 @@ def load_artifacts() -> tuple[
         ARTIFACTS / "segment_friction.csv",
         ARTIFACTS / "weekly_kpis.csv",
         ARTIFACTS / "stage_durations.csv",
+        ARTIFACTS / "review_latency.csv",
         ARTIFACTS / "intervention_scorecard.csv",
         ARTIFACTS / "weight_sensitivity.csv",
     ]
     if not all(path.exists() for path in required):
-        from friction_lab.generate import generate_datasets
-        from friction_lab.metrics import build_analysis_artifacts
+        try:
+            from friction_lab.generate import generate_datasets
+            from friction_lab.metrics import build_analysis_artifacts
 
-        generate_datasets()
-        build_analysis_artifacts()
+            generate_datasets()
+            build_analysis_artifacts()
+        except Exception as error:
+            st.error(
+                "Analysis artifacts are missing and automatic regeneration failed "
+                f"({error}). Run `make all` from the repository root, then restart "
+                "the dashboard."
+            )
+            st.stop()
+    if not all(path.exists() for path in required):
+        st.error(
+            "Analysis artifacts are missing. Run `make all` from the repository root, "
+            "then restart the dashboard."
+        )
+        st.stop()
     summary = json.loads((ARTIFACTS / "summary.json").read_text(encoding="utf-8"))
     return (
         summary,
@@ -74,12 +96,15 @@ def load_artifacts() -> tuple[
         pd.read_csv(ARTIFACTS / "segment_friction.csv"),
         pd.read_csv(ARTIFACTS / "weekly_kpis.csv"),
         pd.read_csv(ARTIFACTS / "stage_durations.csv"),
+        pd.read_csv(ARTIFACTS / "review_latency.csv"),
         pd.read_csv(ARTIFACTS / "intervention_scorecard.csv"),
         pd.read_csv(ARTIFACTS / "weight_sensitivity.csv"),
     )
 
 
-summary, funnel, segments, weekly, durations, scorecard, sensitivity = load_artifacts()
+summary, funnel, segments, weekly, durations, review_latency, scorecard, sensitivity = (
+    load_artifacts()
+)
 
 with st.sidebar:
     st.markdown("### France Fintech Friction Lab")
@@ -96,6 +121,7 @@ with st.sidebar:
     st.markdown("**Data**")
     st.caption(f"{summary['applications']:,} synthetic applications")
     st.caption(f"{summary['events']:,} synthetic events")
+    st.success("Data contract: passed", icon="✅")
 
 st.title("France Fintech Friction Lab")
 st.markdown(
@@ -198,6 +224,32 @@ if page == "Executive decision":
         f"showing where the ranking depends on management priorities.{dissent}"
     )
 
+    st.subheader("Why the recommendation wins")
+    components = scorecard[
+        [
+            "intervention",
+            "impact_score",
+            "guardrail_score",
+            "speed_score",
+            "confidence_score",
+            "decision_score",
+        ]
+    ].rename(
+        columns={
+            "intervention": "Intervention",
+            "impact_score": "Impact",
+            "guardrail_score": "Guardrails",
+            "speed_score": "Speed",
+            "confidence_score": "Evidence",
+            "decision_score": "Total",
+        }
+    )
+    st.dataframe(components, hide_index=True, width="stretch")
+    st.caption(
+        "Component scores use fixed anchors from config/model_assumptions.yml, so adding another "
+        "candidate does not silently rescale every existing option."
+    )
+
     st.subheader("What would change the decision?")
     st.markdown(
         "The recommendation should be revisited if the readiness checklist increases "
@@ -249,8 +301,24 @@ elif page == "Funnel diagnosis":
     st.dataframe(duration_view, hide_index=True, width="stretch")
     st.caption(
         "Computed from the event stream (sql/04_stage_durations.sql). The synthetic generator "
-        "draws stage durations in minutes, so these are illustrative of the analysis pattern, "
+        "draws stage durations, so these are illustrative of the analysis pattern, "
         "not of real verification turnaround times."
+    )
+
+    st.subheader("Verification latency by operating path")
+    latency_view = review_latency.rename(
+        columns={
+            "verification_path": "Path",
+            "applications": "Applications",
+            "median_minutes": "Median minutes",
+            "p90_minutes": "P90 minutes",
+            "p95_minutes": "P95 minutes",
+        }
+    )
+    st.dataframe(latency_view, hide_index=True, width="stretch")
+    st.caption(
+        "Manual review is modelled as a real delay. This cut separates queue performance from "
+        "straight-through verification instead of hiding both in one median."
     )
 
     st.subheader("Guardrails over time")
@@ -326,21 +394,23 @@ else:
   directly targets, where the modelled most-likely lift (~3.4 pp per started application)
   exceeds the {summary["minimum_detectable_lift_pp"]:.1f} pp minimum detectable effect.
 - **Secondary metric:** {summary["experiment_secondary_metric"].lower()}, read directionally:
-  its modelled lift (~0.9 pp) would need several months of full traffic to power on its own,
-  so it confirms direction rather than gating the decision.
+  its modelled lift (~0.9 pp) needs {summary["funded_secondary_total_sample"]:,} applicants,
+  or about {summary["funded_secondary_days_full_traffic"]} days at full traffic, to power on its
+  own, so the first-quarter read is directional.
 - **Guardrails:** verification pass rate, manual-review rate, support-contact rate, fraud and
   compliance monitoring.
-- **Decision rule:** ship only if the primary-metric confidence interval clears the pre-agreed
-  lift threshold, the secondary metric does not move against the primary, and no guardrail
-  deteriorates beyond tolerance.
+- **Decision rule:** advance only if the primary effect is statistically positive, its point
+  estimate is at least {summary["minimum_practical_lift_pp"]:.1f} pp, the funded secondary does
+  not show a material adverse direction, and no guardrail breaches its tolerance.
         """
     )
     st.caption(
         f"Sample sized on a {summary['experiment_primary_base_rate_pct']:.1f}% baseline "
         f"{summary['experiment_primary_metric'].lower()} rate: "
         f"{summary['experiment_total_sample']:,} applicants is about "
-        f"{summary['experiment_days_full_traffic']} days of enrolment at 10,000 applications "
-        "per month with 100% allocation, which fits the 40-day test window below."
+        f"{summary['experiment_days_full_traffic']} days of enrolment at "
+        f"{summary['monthly_applications']:,} applications per month with 100% allocation, "
+        "which fits the 40-day test window below."
     )
     st.subheader("90-day operating cadence")
     timeline = pd.DataFrame(
@@ -362,3 +432,13 @@ else:
         columns=["Window", "Phase", "Outcome"],
     )
     st.dataframe(timeline, hide_index=True, width="stretch")
+    st.subheader("Validity checks before reading the result")
+    st.markdown(
+        """
+- Pre-register eligibility, assignment unit, metrics and exclusions before enrolment.
+- Confirm event completeness and run a sample-ratio-mismatch check before effect estimation.
+- Report intention-to-treat first; do not exclude applicants based on post-treatment behaviour.
+- Use one guardrail-only safety review; do not peek at the primary effect mid-test.
+- Read pre-planned segments for consistency, not as independent discoveries.
+        """
+    )

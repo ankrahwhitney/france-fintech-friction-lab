@@ -1,5 +1,8 @@
 name: quality
 
+permissions:
+  contents: read
+
 on:
   push:
   pull_request:
@@ -7,17 +10,11 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
-      - run: python -m pip install -e ".[dev]"
-      - run: python scripts/generate_data.py
-      - run: python scripts/run_analysis.py
-      - run: python -m ruff check src scripts dashboard tests
-      - run: python -m pytest
-      # Fail if committed artifacts have drifted from what the code regenerates.
-      - run: git diff --exit-code -- artifacts
-
+      - run: make ci

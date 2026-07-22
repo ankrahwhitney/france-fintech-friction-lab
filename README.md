@@ -1,5 +1,9 @@
 # France Fintech Friction Lab
 
+[![quality](https://github.com/ankrahwhitney/france-fintech-friction-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/ankrahwhitney/france-fintech-friction-lab/actions/workflows/ci.yml)
+![Python 3.12](https://img.shields.io/badge/python-3.12-2457d6)
+![Data](https://img.shields.io/badge/data-100%25%20synthetic-172033)
+
 **A transparent Strategy & Operations case: diagnosing remote-onboarding friction, prioritising one
 intervention and designing the test that could prove or disprove it.**
 
@@ -18,10 +22,10 @@ funded accounts in France without creating disproportionate operational or compl
 scenario it addresses the largest modelled source of avoidable friction while remaining faster to
 learn and operationally safer than assisted recovery.
 
-The generated baseline contains **50,000 applications and 149,108 events**. The largest absolute
+The generated baseline contains **50,000 applications and 162,892 events**. The largest absolute
 transition loss is before document submission (13,847 applications). The modelled checklist ranks
-first with a 77.7/100 decision score and a mean uplift of 91 funded accounts per 10,000 applications;
-the 10th–90th percentile range is 66–116. These figures are scenario outputs, not performance claims.
+first with a 72.8/100 decision score and a mean uplift of 88 funded accounts per 10,000 applications;
+the 10th–90th percentile range is 64–113. These figures are scenario outputs, not performance claims.
 
 The checklist wins four of five plausible decision-weight profiles. Under a speed-first profile the
 contextual explainer wins, making the dependency on management priorities visible rather than
@@ -31,8 +35,9 @@ hard-coding one answer.
 checklist targets: document submission as the primary metric (12,206 participants, about 37 days
 of enrolment at 10,000 applications per month), funded account within seven days as the
 directional secondary metric, and verification, manual review, support contact and compliance
-indicators as guardrails. The funded rate alone cannot be powered inside one quarter for the
-modelled ~0.9 pp lift, which is exactly why the test reads the targeted stage first.
+indicators as guardrails. Powering the funded rate alone for the modelled ~0.9 pp lift would take
+52,408 participants, or about 158 days at full traffic; the first test therefore reads the targeted
+stage first and keeps a longer holdout for downstream confirmation.
 
 **What would change the decision:** evidence that the checklist increases review queues, a realised
 lift below the pre-agreed threshold, customer research showing that the copy reduces trust, or a
@@ -49,6 +54,16 @@ The case demonstrates the work of Strategy & Operations rather than a decorative
 5. compare interventions using impact and guardrails;
 6. turn the recommendation into a 90-day operating plan.
 
+## Skills demonstrated
+
+| Role signal | Evidence in this repository |
+|---|---|
+| Optimise customer and internal experience | Funnel loss, review-queue latency and guardrail diagnosis |
+| Research and propose processes | Three intervention hypotheses plus a France-specific evidence protocol |
+| Translate data into action | SQL outputs → decision score → test recommendation → 90-day plan |
+| Work through regulatory constraints | EBA, ANSSI, CNIL and ACPR anchors with explicit compliance gates |
+| Deliver and communicate outcomes | Reproducible pipeline, executive memo, dashboard and decision rules |
+
 ## Outputs
 
 | Recruiter path | Artifact |
@@ -60,6 +75,9 @@ The case demonstrates the work of Strategy & Operations rather than a decorative
 | Prepare for the interview | [`docs/interview_defence_guide.md`](docs/interview_defence_guide.md) |
 | Present the case in three minutes | [`docs/recruiter_walkthrough.md`](docs/recruiter_walkthrough.md) |
 | Field the France-specific research | [`docs/french_research_protocol.md`](docs/french_research_protocol.md) |
+| Audit the event model | [`docs/data_dictionary.md`](docs/data_dictionary.md) |
+| Review the experiment contract | [`docs/experiment_preregistration.md`](docs/experiment_preregistration.md) |
+| Map evidence to operating skills | [`docs/role_evidence_map.md`](docs/role_evidence_map.md) |
 | Explore the analysis | `streamlit run dashboard/app.py` |
 | Audit assumptions | [`config/model_assumptions.yml`](config/model_assumptions.yml) |
 | Review evidence boundaries | [`docs/methodology.md`](docs/methodology.md) |
@@ -81,7 +99,7 @@ make dashboard
 The pipeline creates 50,000 synthetic applications and their event history, runs DuckDB SQL,
 simulates uncertainty around three interventions and writes recruiter-facing artifacts.
 
-Current generated baseline: 15.19% funded within seven days, 4.26% manual review and 7.23% support
+Current generated baseline: 14.81% funded within seven days, 4.40% manual review and 7.23% support
 contact. Run the pipeline to verify every figure from source code.
 
 ## Repository map
@@ -90,8 +108,8 @@ contact. Run the pipeline to verify every figure from source code.
 assets/                   Committed dashboard screenshot
 config/                   Explicit intervention and economic assumptions
 dashboard/                Streamlit decision interface
-data/processed/           Reproducible synthetic Parquet datasets
-artifacts/                Generated metrics and model outputs
+data/processed/           Reproducible synthetic Parquet datasets (generated, not committed)
+artifacts/                Generated metrics, quality report and model outputs
 docs/                     Decision, methodology, risks and 90-day plan
 scripts/                  Pipeline entry points
 sql/                      Funnel, segment, weekly KPI and stage-duration analysis
@@ -106,5 +124,5 @@ Python · pandas · NumPy · DuckDB · SQL · Parquet · Plotly · Streamlit · 
 ## Candidate
 
 **Whitney Ankrah** — B.Sc. Business Information Systems candidate with experience in banking IT
-project management, process analysis, Python automation, entrepreneurship and incoming HR
-Digitalisation & Analytics experience at Porsche AG.
+project management, process analysis, Python automation, entrepreneurship and an upcoming HR
+Digitalisation & Analytics internship at Porsche AG.

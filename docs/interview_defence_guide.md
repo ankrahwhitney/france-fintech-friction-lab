@@ -12,13 +12,13 @@ in one file, and stress-tested across five weight profiles. The research protoco
 (`docs/french_research_protocol.md`) is how they get replaced with evidence.
 
 **Q: Why is the primary metric document submission and not funded accounts?**
-Power. The funded-rate lift the model itself predicts (~0.9 pp) would need ~5 months of full
-traffic to detect; pretending otherwise designs a test that ends inconclusive. The checklist acts
-on exactly one stage, so the test reads that stage (MDE 2.5 pp against a ~3.4 pp expected
-per-applicant effect), keeps funded-in-7-days as a directional secondary, and gates shipping on
-guardrails. If the primary moves but funding does not follow directionally, we do not ship.
+Power. The funded-rate lift the model predicts (0.88 pp) needs 26,204 participants per arm —
+52,408 total, or about 158 days at the authored traffic volume. Pretending it is powerable inside
+one quarter designs an inconclusive test. The checklist acts on one stage, so the first read uses
+that stage (MDE 2.5 pp against a ~3.4 pp expected per-applicant effect), keeps funded-in-seven-days
+directional and on a longer holdout, and gates advancement on guardrails.
 
-**Q: Your recommended intervention has mean net value of €7k against €45k fixed cost, with a
+**Q: Your recommended intervention has mean net value of €5.9k against €45k fixed cost, with a
 negative P10. Why proceed?**
 Because the decision being made is "what do we test", not "what do we roll out". The test buys
 information: it converts an assumed 2–6 pp lift into a measured one, at bounded cost and with
@@ -28,9 +28,9 @@ not to scale. That is written into the decision rule, not left to enthusiasm.
 
 **Q: Assisted recovery has the highest modelled impact. Why is it last?**
 It scores worst on everything except impact: +1.5 pp support contacts, +1.0 pp manual review,
-8 delivery weeks, lowest evidence confidence, and modelled net value of −€32,659 even after
+8 delivery weeks, lowest evidence confidence, and modelled net value of −€34,206 even after
 charging its variable cost only to the 23% of applications that actually fail verification. Under
-a growth-first weighting it still loses to the checklist (69.8 vs 74.9). I would revisit it if
+a growth-first weighting it still loses to the checklist (59.0 vs 66.8). I would revisit it if
 support-cost assumptions improve or if the checklist test shows document friction is not the
 binding constraint.
 
@@ -43,26 +43,30 @@ fairness and compliance review before anyone acts on segments.
 
 **Q: What does the event stream add beyond the applications table?**
 The stage-duration analysis (`sql/04_stage_durations.sql`) — medians and P90s per transition —
-which is the shape of analysis that only exists on events. In this synthetic version durations
-are minute-scale by construction; on real data the same query is the first place verification
-SLAs and manual-review tails would show up.
+which is the shape of analysis that only exists on events. The model also separates manual-review
+latency from straight-through verification (`sql/05_review_latency.sql`): 374-minute vs 12-minute
+synthetic medians. Those are not market claims; the point is to avoid hiding a queue in one blended
+conversion number.
 
 **Q: "Funded within 7 days" — is there any 7-day logic in the code?**
-No. The generator draws funding as a Bernoulli after verification with minute-scale timestamps.
-It is a labelled simplification (`docs/methodology.md`, item 1), kept because it is the metric a
-real test would define properly over event timestamps. Same class of simplification: manual
-review does not gate verification in the generator.
+Yes. The generator first creates an any-time first-funding timestamp after successful verification,
+then sets `funded_7d` only if that timestamp is no later than seven days after application start.
+The equality is pinned in `tests/test_data_contract.py`. The timing distribution is still authored,
+so the KPI is technically correct without pretending the baseline is empirical.
 
 **Q: If a fourth intervention were added, could the existing scores change?**
-Yes — impact is normalised by the best option, so scores are relative to the option set. For
-ranking three candidates that is fine; a standing portfolio would need an absolute scale. The
-weight-sensitivity table exists precisely because single-number scores are fragile.
+Not merely because it was added. Component scores use fixed caps from the config rather than the
+best and worst options in the current set. Existing scores change only if assumptions or anchors
+change. The anchors are still judgement inputs, which is why the component table and five weight
+profiles remain visible.
 
 **Q: Walk me through the sample-size formula.**
 Two-proportion z-test: n per arm = (z₁₋α/2·√(2p̄(1−p̄)) + z₁₋β·√(p₁(1−p₁)+p₂(1−p₂)))² / (p₂−p₁)².
 With p₁ = 0.571, MDE 2.5 pp, α = 0.05, power 0.80 → 6,103 per arm. At 10,000 applications a month
-that is ~37 days of full-traffic enrolment, which is why the test window in the 90-day plan is
-40 days and analysis starts on day 71 (7-day maturity for the secondary metric).
+that is ~37 days of full-traffic enrolment; the plan gives it a 40-day window (days 31–70). The
+primary metric resolves within the session, so analysis starts on day 71. The funded secondary
+for the last enrollee matures seven days later, but the fully powered downstream read requires a
+longer holdout because the expected effect is much smaller.
 
 **Q: Why should I believe any of this transfers to France specifically?**
 The synthetic model does not encode France beyond document-type mix and locale — I am explicit
@@ -72,7 +76,8 @@ data-minimisation expectations, and the research protocol that would ground the 
 French applicant behaviour before the build phase ends.
 
 **Q: What would you do differently with real data?**
-Compute funded-in-7-days as a true event-window metric; let manual review gate verification and
-measure its latency; replace triangular assumptions with priors fitted from past experiments;
-add sequential testing instead of fixed-horizon; and move the decision score to an absolute
-scale with net value as an explicit rollout gate.
+Model review as an actual queue with arrival rate, capacity, service levels and rework; replace
+triangular assumptions with historical experiments and primary research; validate identity and
+cross-device assignment; estimate heterogeneous downstream conversion for marginal applicants;
+and keep measured net value as an explicit rollout gate. I would use sequential methods only if
+they were pre-specified and operationally needed, not to peek until a result looks positive.

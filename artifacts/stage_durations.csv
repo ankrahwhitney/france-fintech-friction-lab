@@ -1,5 +1,5 @@
 transition_order,transition,applications,median_minutes,p90_minutes
 1,Start to profile,42398,4.0,8.0
 2,Profile to documents,28551,6.0,14.0
-3,Documents to verified,16949,12.0,29.0
-4,Verified to funded,7597,73.0,203.4
+3,Documents to verified,16891,12.0,42.0
+4,Verified to funded,7578,1463.0,4935.0

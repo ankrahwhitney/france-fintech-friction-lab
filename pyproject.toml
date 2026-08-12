@@ -17,7 +17,7 @@ dependencies = [
   "plotly>=6,<7",
   "pyarrow>=23.0.1,<24",
   "pyyaml>=6,<7",
-  "streamlit>=1.50,<2",
+  "streamlit>=1.61.1,<2",
 ]
 
 [project.optional-dependencies]
